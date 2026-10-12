@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Attendance Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f3f5f9; --surface: #ffffff; --ink: #101a33; --muted: #66718a;
+    --line: #e3e8f0; --row-alt: #f8fafc; --accent: #2a4bd7; --on-accent: #ffffff;
+    --p: #17a06b; --w: #2f6fed; --l: #e8960f; --o: #7d8aa3; --h: #8f5bf0;
+    --today: #eef2ff;
+    --shadow: 0 1px 2px rgba(16,26,51,.05), 0 8px 24px rgba(16,26,51,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0d1220; --surface: #151c30; --ink: #e8ecf6; --muted: #8e9ab5;
+      --line: #263049; --row-alt: #121a2d; --accent: #7e95ff; --on-accent: #0d1220; --today: #1b2547;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d1220; --surface: #151c30; --ink: #e8ecf6; --muted: #8e9ab5;
+    --line: #263049; --row-alt: #121a2d; --accent: #7e95ff; --on-accent: #0d1220; --today: #1b2547;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 15px; line-height: 1.45; -webkit-font-smoothing: antialiased;
+  }
+  button, select, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  [hidden] { display: none !important; }
+
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 28px 20px 64px; }
+
+  .top { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+  .top h1 { font-size: 22px; font-weight: 800; letter-spacing: -.02em; margin: 0; }
+  .top .sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .tools { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; font-weight: 600; font-size: 13px; transition: border-color .15s; }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .btn.danger { color: #d23b4b; }
+  .btn.danger:hover { border-color: #d23b4b; }
+
+  /* employee bar */
+  .empbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; margin-bottom: 18px; box-shadow: var(--shadow); }
+  .empbar label { font-size: 13px; font-weight: 700; color: var(--muted); }
+  .empbar select { border: 1px solid var(--line); background: var(--bg); border-radius: 10px; padding: 8px 12px; font-weight: 700; min-width: 220px; max-width: 100%; }
+  .empbar select:hover { border-color: var(--accent); }
+
+  .tabs { display: inline-flex; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 4px; margin-bottom: 18px; }
+  .tab { border: 0; background: transparent; padding: 7px 18px; border-radius: 9px; font-weight: 700; font-size: 13px; color: var(--muted); }
+  .tab[aria-selected="true"] { background: var(--accent); color: var(--on-accent); }
+
+  .monthbar { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
+  .monthbar h2 { font-size: 30px; font-weight: 800; letter-spacing: -.03em; margin: 0 8px 0 0; min-width: 220px; }
+  .icon-btn { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); font-size: 16px; font-weight: 700; }
+  .icon-btn:hover { border-color: var(--accent); }
+  .spacer { flex: 1; }
+  .who { color: var(--muted); font-size: 14px; font-weight: 600; margin-bottom: 16px; }
+  .who b { color: var(--ink); }
+
+  .summary { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 18px; }
+  .stat { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; box-shadow: var(--shadow); border-top: 3px solid var(--c, var(--line)); }
+  .stat b { display: block; font-size: 26px; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; }
+  .stat span { font-size: 12px; color: var(--muted); font-weight: 600; }
+  .stat.p { --c: var(--p); } .stat.w { --c: var(--w); } .stat.l { --c: var(--l); }
+  .stat.o { --c: var(--o); } .stat.h { --c: var(--h); } .stat.share { --c: var(--accent); }
+  .hint { color: var(--muted); font-size: 13px; margin: -6px 0 16px; }
+
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; }
+  .scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 760px; }
+  th, td { padding: 8px 10px; text-align: center; border-bottom: 1px solid var(--line); }
+  thead th { font-size: 12.5px; font-weight: 700; color: var(--muted); background: var(--surface); padding: 12px 10px; }
+  thead th .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: var(--c); }
+  th.p { --c: var(--p); } th.w { --c: var(--w); } th.l { --c: var(--l); } th.o { --c: var(--o); } th.h { --c: var(--h); }
+  tbody tr:nth-child(even) { background: var(--row-alt); }
+  tbody tr.today { background: var(--today); }
+  tbody tr.today td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.date { text-align: left; white-space: nowrap; padding-left: 16px; width: 130px; }
+  td.date b { font-weight: 800; font-size: 16px; display: inline-block; width: 26px; }
+  td.date small { color: var(--muted); font-weight: 600; font-size: 12.5px; }
+  td.date em { font-style: normal; font-size: 11px; font-weight: 700; color: var(--accent); margin-left: 6px; }
+  tr.is-off td.date small { color: var(--o); }
+
+  .pick { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--line); background: transparent; display: inline-grid; place-items: center; transition: transform .1s, background .15s, border-color .15s; color: transparent; font-size: 14px; font-weight: 800; line-height: 1; padding: 0; }
+  .pick:hover { border-color: var(--c); transform: scale(1.08); }
+  .pick.on { background: var(--c); border-color: var(--c); color: #fff; }
+  .pick.auto { border-color: var(--c); color: var(--c); border-style: dashed; }
+  .pick.p { --c: var(--p); } .pick.w { --c: var(--w); } .pick.l { --c: var(--l); } .pick.o { --c: var(--o); } .pick.h { --c: var(--h); }
+
+  .note { width: 100%; min-width: 130px; border: 1px solid transparent; background: transparent; color: var(--ink); border-radius: 8px; padding: 6px 8px; font-size: 13px; }
+  .note:hover { border-color: var(--line); }
+  .note:focus { border-color: var(--accent); background: var(--surface); outline: none; }
+  .note::placeholder { color: var(--muted); opacity: .6; }
+
+  /* history */
+  .history td, .history th { text-align: center; }
+  .history td:first-child, .history th:first-child { text-align: left; padding-left: 18px; }
+  .history tbody tr { cursor: pointer; }
+  .history tbody tr:hover { background: var(--today); }
+  .history tr.total td { font-weight: 800; background: var(--row-alt); cursor: default; }
+  .pill { display: inline-block; min-width: 30px; padding: 2px 8px; border-radius: 999px; font-weight: 700; font-size: 13px; }
+  .pill.zero { color: var(--muted); opacity: .5; font-weight: 500; }
+
+  /* team matrix */
+  .team table { min-width: 0; width: max-content; }
+  .team th, .team td { padding: 4px 2px; }
+  .team thead th { padding: 8px 2px; font-size: 11.5px; line-height: 1.2; }
+  .team thead th small { display: block; font-weight: 600; opacity: .7; }
+  .team th.cur { color: var(--accent); background: var(--today); }
+  .team td.cur { background: var(--today); }
+  .team .nm { position: sticky; left: 0; z-index: 1; background: var(--surface); text-align: left; padding: 6px 14px; min-width: 170px; border-right: 1px solid var(--line); }
+  .team tbody tr:nth-child(even) td.nm { background: var(--row-alt); }
+  .team tbody tr { cursor: default; }
+  .team .nm b { display: block; font-weight: 700; font-size: 14px; cursor: pointer; }
+  .team .nm b:hover { color: var(--accent); }
+  .team .nm small { color: var(--muted); font-size: 12px; font-weight: 600; }
+  .tcell { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 6px; font-size: 11px; font-weight: 800; color: #fff; background: var(--c); }
+  .tcell.p { --c: var(--p); } .tcell.w { --c: var(--w); } .tcell.l { --c: var(--l); } .tcell.o { --c: var(--o); } .tcell.h { --c: var(--h); }
+  .tcell.auto { background: transparent; color: var(--c); border: 1px dashed var(--c); opacity: .75; }
+  .tcell.none { background: transparent; border: 1px dashed var(--line); color: var(--muted); font-weight: 500; }
+  .team td.tot { font-weight: 800; font-size: 13px; padding: 4px 9px; }
+  .team th.tot { padding: 8px 9px; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 14px; color: var(--muted); font-size: 12.5px; font-weight: 600; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+  .empty { padding: 44px 24px; text-align: center; }
+  .empty h2 { margin: 0 0 6px; font-size: 20px; }
+  .empty p { margin: 0 0 18px; color: var(--muted); }
+
+  footer { margin-top: 22px; color: var(--muted); font-size: 12.5px; }
+
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 10px; font-weight: 600; font-size: 13px; opacity: 0; pointer-events: none; transition: all .25s; z-index: 50; }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  dialog { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--ink); padding: 22px; max-width: 520px; width: calc(100% - 32px); box-shadow: var(--shadow); }
+  dialog::backdrop { background: rgba(10,15,30,.45); }
+  dialog h3 { margin: 0 0 4px; font-size: 18px; }
+  dialog p { margin: 0 0 14px; color: var(--muted); font-size: 13px; }
+  .days { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; }
+  .days label { cursor: pointer; }
+  .days input { position: absolute; opacity: 0; }
+  .days span { display: inline-block; padding: 7px 11px; border: 1px solid var(--line); border-radius: 9px; font-weight: 700; font-size: 13px; }
+  .days input:checked + span { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+  .days input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .dlg-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+
+  .erow, .eadd { display: grid; grid-template-columns: 1fr 120px auto; gap: 8px; margin-bottom: 8px; align-items: center; }
+  .erow input, .eadd input { border: 1px solid var(--line); background: var(--bg); border-radius: 9px; padding: 8px 10px; font-size: 14px; min-width: 0; width: 100%; }
+  .erow input:focus, .eadd input:focus { border-color: var(--accent); outline: none; }
+  .elist { max-height: 300px; overflow-y: auto; margin-bottom: 8px; padding-right: 2px; }
+  .eadd { padding-top: 12px; border-top: 1px solid var(--line); }
+
+  @media (max-width: 760px) {
+    .summary { grid-template-columns: repeat(3, 1fr); }
+    .monthbar h2 { font-size: 24px; min-width: 0; }
+    .wrap { padding: 18px 12px 48px; }
+    .erow, .eadd { grid-template-columns: 1fr 90px auto; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <div>
+      <h1>Attendance tracker</h1>
+      <div class="sub">Employees and attendance are saved in this browser.</div>
+    </div>
+    <div class="tools">
+      <button class="btn" id="themeBtn" type="button">Theme</button>
+      <button class="btn" id="settingsBtn" type="button">Weekly off days</button>
+      <button class="btn" id="exportBtn" type="button">Export backup</button>
+      <button class="btn" id="importBtn" type="button">Import backup</button>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
+    </div>
+  </div>
+
+  <div class="empbar" id="empBar">
+    <label for="empSel">Employee</label>
+    <select id="empSel"></select>
+    <button class="btn" id="manageBtn" type="button">Manage employees</button>
+  </div>
+
+  <!-- shown until the first employee is added -->
+  <section id="emptyView" hidden>
+    <div class="card empty">
+      <h2>Add your first employee</h2>
+      <p>Each employee gets their own attendance record. Add people, then pick a name to start marking days.</p>
+      <button class="btn primary" id="emptyAdd" type="button">Add employee</button>
+    </div>
+  </section>
+
+  <div id="mainArea">
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" id="tabMonth" aria-selected="true" type="button">Month</button>
+      <button class="tab" role="tab" id="tabTeam" aria-selected="false" type="button">Team overview</button>
+      <button class="tab" role="tab" id="tabHistory" aria-selected="false" type="button">History</button>
+    </div>
+
+    <div class="monthbar" id="monthBar">
+      <button class="icon-btn" id="prev" type="button" aria-label="Previous month">&#8249;</button>
+      <h2 id="monthTitle"></h2>
+      <button class="icon-btn" id="next" type="button" aria-label="Next month">&#8250;</button>
+      <button class="btn" id="todayBtn" type="button">Today</button>
+      <span class="spacer"></span>
+      <button class="btn primary" id="fillBtn" type="button">Mark unmarked weekdays present</button>
+    </div>
+
+    <!-- MONTH VIEW -->
+    <section id="monthView">
+      <div class="who" id="who"></div>
+      <div class="summary" id="summary"></div>
+      <div class="hint" id="hint"></div>
+      <div class="card">
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="text-align:left;padding-left:16px">Date</th>
+                <th class="p"><span class="dot"></span>Present</th>
+                <th class="w"><span class="dot"></span>WFH</th>
+                <th class="l"><span class="dot"></span>On leave</th>
+                <th class="o"><span class="dot"></span>Weekly off</th>
+                <th class="h"><span class="dot"></span>Holiday</th>
+                <th style="text-align:left">Note</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </div>
+      <footer>Click a circle to mark a day. Click it again to clear. Dashed circles are weekly off days set automatically.</footer>
+    </section>
+
+    <!-- TEAM VIEW -->
+    <section id="teamView" hidden>
+      <div class="card team">
+        <div class="scroll"><table id="teamTable"></table></div>
+      </div>
+      <div class="legend">
+        <span><i class="tcell p">P</i>Present</span>
+        <span><i class="tcell w">W</i>WFH</span>
+        <span><i class="tcell l">L</i>On leave</span>
+        <span><i class="tcell o">O</i>Weekly off</span>
+        <span><i class="tcell h">H</i>Holiday</span>
+        <span><i class="tcell none">&middot;</i>Not marked</span>
+      </div>
+      <footer>Click an employee's name to open and edit their month. Office share is present days out of present + WFH days.</footer>
+    </section>
+
+    <!-- HISTORY VIEW -->
+    <section id="historyView" hidden>
+      <div class="who" id="whoHist"></div>
+      <div class="card">
+        <div class="scroll">
+          <table class="history">
+            <thead>
+              <tr>
+                <th>Month</th>
+                <th class="p"><span class="dot"></span>Present</th>
+                <th class="w"><span class="dot"></span>WFH</th>
+                <th class="l"><span class="dot"></span>On leave</th>
+                <th class="o"><span class="dot"></span>Weekly off</th>
+                <th class="h"><span class="dot"></span>Holiday</th>
+                <th>Office share</th>
+              </tr>
+            </thead>
+            <tbody id="histRows"></tbody>
+          </table>
+        </div>
+      </div>
+      <footer>Click a month to open it. Office share is present days out of present + WFH days.</footer>
+    </section>
+  </div>
+</div>
+
+<dialog id="settingsDlg">
+  <h3>Weekly off days</h3>
+  <p>Unmarked days that fall on these weekdays count as weekly off for every employee.</p>
+  <div class="days" id="daysBox"></div>
+  <div class="dlg-actions">
+    <button class="btn" id="cancelSettings" type="button">Cancel</button>
+    <button class="btn primary" id="saveSettings" type="button">Save</button>
+  </div>
+</dialog>
+
+<dialog id="empDlg">
+  <h3>Employees</h3>
+  <p>Edit a name or ID directly. Deleting an employee also deletes their attendance.</p>
+  <div class="elist" id="empList"></div>
+  <div class="eadd">
+    <input id="newName" type="text" placeholder="Full name" maxlength="60" aria-label="New employee name">
+    <input id="newCode" type="text" placeholder="Emp ID (optional)" maxlength="20" aria-label="New employee ID">
+    <button class="btn primary" id="addEmp" type="button">Add</button>
+  </div>
+  <div class="dlg-actions"><button class="btn" id="closeEmp" type="button">Done</button></div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var KEY = 'attendance-tracker-v2';
+  var OLD_KEY = 'attendance-tracker-v1';
+  var THEME_KEY = 'attendance-tracker-theme';
+  var STATUS = [
+    { k: 'P', label: 'Present',    cls: 'p' },
+    { k: 'W', label: 'WFH',        cls: 'w' },
+    { k: 'L', label: 'On leave',   cls: 'l' },
+    { k: 'O', label: 'Weekly off', cls: 'o' },
+    { k: 'H', label: 'Holiday',    cls: 'h' }
+  ];
+  var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+  /* ---------- state ---------- */
+  var db = { employees: [], records: {}, settings: { weekOff: [0, 6] }, activeId: null };
+  var tab = 'month';
+  var now = new Date();
+  var today = { y: now.getFullYear(), m: now.getMonth(), d: now.getDate() };
+  var view = { y: today.y, m: today.m };
+
+  function $(id) { return document.getElementById(id); }
+  function mk(y, m) { return y + '-' + String(m + 1).padStart(2, '0'); }
+  function dim(y, m) { return new Date(y, m + 1, 0).getDate(); }
+  function uid() { return 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+  function empById(id) { for (var i = 0; i < db.employees.length; i++) if (db.employees[i].id === id) return db.employees[i]; return null; }
+  function active() { return empById(db.activeId); }
+
+  /* ---------- storage ---------- */
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (raw) {
+        var p = JSON.parse(raw);
+        if (p && typeof p === 'object') {
+          db.employees = Array.isArray(p.employees) ? p.employees : [];
+          db.records = p.records || {};
+          db.settings = p.settings || db.settings;
+          db.activeId = p.activeId || null;
+        }
+      } else {
+        // bring over single-person data saved by the earlier version
+        var old = localStorage.getItem(OLD_KEY);
+        if (old) {
+          var o = JSON.parse(old);
+          if (o && o.records && Object.keys(o.records).length) {
+            var id = uid();
+            db.employees.push({ id: id, name: 'Me', code: '' });
+            db.records[id] = o.records;
+            db.activeId = id;
+          }
+          if (o && o.settings && Array.isArray(o.settings.weekOff)) db.settings = o.settings;
+        }
+      }
+    } catch (e) { console.warn('Could not read saved data', e); }
+    if (!Array.isArray(db.settings.weekOff)) db.settings.weekOff = [0, 6];
+    if (!active() && db.employees.length) db.activeId = db.employees[0].id;
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(db)); }
+    catch (e) { toast('Could not save. Use Export backup to keep your data.'); }
+  }
+
+  var toastTimer;
+  function toast(msg) {
+    var t = $('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.classList.remove('show'); }, 2800);
+  }
+
+  /* ---------- attendance helpers ---------- */
+  function entry(id, y, m, d) {
+    var r = db.records[id], mo = r && r[mk(y, m)];
+    return mo && mo[d] ? mo[d] : null;
+  }
+  function effective(id, y, m, d) {
+    var e = entry(id, y, m, d);
+    if (e && e.s) return { s: e.s, auto: false };
+    if (db.settings.weekOff.indexOf(new Date(y, m, d).getDay()) !== -1) return { s: 'O', auto: true };
+    return { s: null, auto: false };
+  }
+  function isPast(y, m, d) { return new Date(y, m, d) <= new Date(today.y, today.m, today.d); }
+  function tally(id, y, m) {
+    var c = { P: 0, W: 0, L: 0, O: 0, H: 0, none: 0 };
+    for (var d = 1; d <= dim(y, m); d++) {
+      var e = effective(id, y, m, d);
+      if (e.s) c[e.s]++; else if (isPast(y, m, d)) c.none++;
+    }
+    return c;
+  }
+  function share(c) { var t = c.P + c.W; return t ? Math.round((c.P / t) * 100) + '%' : '\u2013'; }
+  function cleanup(id, key, d) {
+    var r = db.records[id], mo = r && r[key];
+    if (!mo) return;
+    if (mo[d] && !mo[d].s && !mo[d].n) delete mo[d];
+    if (!Object.keys(mo).length) delete r[key];
+    if (!Object.keys(r).length) delete db.records[id];
+  }
+  function ensure(id, key, d) {
+    var r = db.records[id] || (db.records[id] = {});
+    var mo = r[key] || (r[key] = {});
+    return mo[d] || (mo[d] = {});
+  }
+
+  /* ---------- rendering ---------- */
+  function refresh() {
+    var has = db.employees.length > 0;
+    $('emptyView').hidden = has;
+    $('mainArea').hidden = !has;
+    $('empBar').querySelector('label').hidden = !has;
+    $('empSel').hidden = !has;
+    renderEmpSelect();
+    if (!has) return;
+
+    var isMonth = tab === 'month', isTeam = tab === 'team', isHist = tab === 'history';
+    $('monthView').hidden = !isMonth;
+    $('teamView').hidden = !isTeam;
+    $('historyView').hidden = !isHist;
+    $('monthBar').hidden = isHist;
+    $('fillBtn').hidden = !isMonth;
+    $('tabMonth').setAttribute('aria-selected', isMonth);
+    $('tabTeam').setAttribute('aria-selected', isTeam);
+    $('tabHistory').setAttribute('aria-selected', isHist);
+    $('monthTitle').textContent = MONTHS[view.m] + ' ' + view.y;
+
+    if (isMonth) renderMonth();
+    else if (isTeam) renderTeam();
+    else renderHistory();
+  }
+
+  function renderEmpSelect() {
+    var sel = $('empSel');
+    sel.innerHTML = db.employees.map(function (e) {
+      return '<option value="' + esc(e.id) + '"' + (e.id === db.activeId ? ' selected' : '') + '>' +
+        esc(e.name) + (e.code ? ' (' + esc(e.code) + ')' : '') + '</option>';
+    }).join('');
+  }
+
+  function whoLine(prefix) {
+    var a = active();
+    return a ? prefix + '<b>' + esc(a.name) + '</b>' + (a.code ? ' \u00b7 ' + esc(a.code) : '') : '';
+  }
+
+  function renderMonth() {
+    var id = db.activeId;
+    $('who').innerHTML = whoLine('Recording for ');
+    var c = tally(id, view.y, view.m);
+    $('summary').innerHTML =
+      '<div class="stat p"><b>' + c.P + '</b><span>Present</span></div>' +
+      '<div class="stat w"><b>' + c.W + '</b><span>WFH</span></div>' +
+      '<div class="stat l"><b>' + c.L + '</b><span>On leave</span></div>' +
+      '<div class="stat o"><b>' + c.O + '</b><span>Weekly off</span></div>' +
+      '<div class="stat h"><b>' + c.H + '</b><span>Holiday</span></div>' +
+      '<div class="stat share"><b>' + share(c) + '</b><span>Attendance  %</span></div>';
+    $('hint').textContent = c.none ? c.none + (c.none === 1 ? ' day is' : ' days are') + ' still unmarked.' : '';
+
+    var html = '', n = dim(view.y, view.m);
+    for (var d = 1; d <= n; d++) {
+      var dow = new Date(view.y, view.m, d).getDay();
+      var eff = effective(id, view.y, view.m, d);
+      var e = entry(id, view.y, view.m, d);
+      var isToday = view.y === today.y && view.m === today.m && d === today.d;
+      html += '<tr class="' + (isToday ? 'today ' : '') + (eff.s === 'O' ? 'is-off' : '') + '" data-d="' + d + '">' +
+        '<td class="date"><b>' + d + '</b><small>' + DAYS[dow] + '</small>' + (isToday ? '<em>Today</em>' : '') + '</td>';
+      STATUS.forEach(function (st) {
+        var state = eff.s === st.k ? (eff.auto ? ' auto' : ' on') : '';
+        html += '<td><button type="button" class="pick ' + st.cls + state + '" data-s="' + st.k + '"' +
+          ' aria-pressed="' + (eff.s === st.k) + '" aria-label="' + st.label + ', ' + d + ' ' + MONTHS[view.m] + '">\u2713</button></td>';
+      });
+      html += '<td><input class="note" type="text" maxlength="120" placeholder="Add note" value="' + esc(e && e.n ? e.n : '') +
+        '" aria-label="Note for ' + d + ' ' + MONTHS[view.m] + '"></td></tr>';
+    }
+    $('rows').innerHTML = html;
+  }
+
+  function renderTeam() {
+    var n = dim(view.y, view.m);
+    var isCurMonth = view.y === today.y && view.m === today.m;
+    var head = '<thead><tr><th class="nm" style="text-align:left;padding-left:14px;">Employee</th>';
+    for (var d = 1; d <= n; d++) {
+      var cur = isCurMonth && d === today.d;
+      head += '<th class="' + (cur ? 'cur' : '') + '">' + d + '<small>' + DAYS[new Date(view.y, view.m, d).getDay()].charAt(0) + '</small></th>';
+    }
+    head += '<th class="tot p">Present</th><th class="tot w">WFH</th><th class="tot l">Leave</th><th class="tot">Share</th></tr></thead>';
+
+    var body = '<tbody>';
+    db.employees.forEach(function (emp) {
+      body += '<tr data-id="' + esc(emp.id) + '"><td class="nm"><b data-open="1">' + esc(emp.name) + '</b>' +
+        (emp.code ? '<small>' + esc(emp.code) + '</small>' : '') + '</td>';
+      for (var d = 1; d <= n; d++) {
+        var eff = effective(emp.id, view.y, view.m, d);
+        var cur = isCurMonth && d === today.d;
+        var cell;
+        if (eff.s) {
+          var st = STATUS.filter(function (x) { return x.k === eff.s; })[0];
+          cell = '<span class="tcell ' + st.cls + (eff.auto ? ' auto' : '') + '" title="' + st.label + '">' + eff.s + '</span>';
+        } else {
+          cell = '<span class="tcell none">' + (isPast(view.y, view.m, d) ? '\u00b7' : '') + '</span>';
+        }
+        body += '<td class="' + (cur ? 'cur' : '') + '">' + cell + '</td>';
+      }
+      var c = tally(emp.id, view.y, view.m);
+      body += '<td class="tot">' + c.P + '</td><td class="tot">' + c.W + '</td><td class="tot">' + c.L + '</td><td class="tot">' + share(c) + '</td></tr>';
+    });
+    body += '</tbody>';
+    $('teamTable').innerHTML = head + body;
+  }
+
+  function cell(n) { return '<td><span class="pill' + (n ? '' : ' zero') + '">' + n + '</span></td>'; }
+  function renderHistory() {
+    var id = db.activeId;
+    $('whoHist').innerHTML = whoLine('History for ');
+    var keys = Object.keys(db.records[id] || {});
+    var cur = mk(today.y, today.m);
+    if (keys.indexOf(cur) === -1) keys.push(cur);
+    keys.sort().reverse();
+    var total = { P: 0, W: 0, L: 0, O: 0, H: 0 }, html = '';
+    keys.forEach(function (k) {
+      var y = +k.slice(0, 4), m = +k.slice(5) - 1, c = tally(id, y, m);
+      ['P','W','L','O','H'].forEach(function (s) { total[s] += c[s]; });
+      html += '<tr data-y="' + y + '" data-m="' + m + '" tabindex="0"><td><b>' + MONTHS[m] + ' ' + y + '</b></td>' +
+        cell(c.P) + cell(c.W) + cell(c.L) + cell(c.O) + cell(c.H) + '<td>' + share(c) + '</td></tr>';
+    });
+    html += '<tr class="total"><td>All time</td>' + cell(total.P) + cell(total.W) + cell(total.L) + cell(total.O) + cell(total.H) + '<td>' + share(total) + '</td></tr>';
+    $('histRows').innerHTML = html;
+  }
+
+  /* ---------- month interactions ---------- */
+  $('rows').addEventListener('click', function (ev) {
+    var b = ev.target.closest('.pick'); if (!b) return;
+    var d = +b.closest('tr').dataset.d, key = mk(view.y, view.m);
+    var e = ensure(db.activeId, key, d);
+    if (e.s === b.dataset.s) delete e.s; else e.s = b.dataset.s;
+    cleanup(db.activeId, key, d);
+    save(); renderMonth();
+  });
+  $('rows').addEventListener('change', function (ev) {
+    if (!ev.target.classList.contains('note')) return;
+    var d = +ev.target.closest('tr').dataset.d, key = mk(view.y, view.m), text = ev.target.value.trim();
+    var e = ensure(db.activeId, key, d);
+    if (text) e.n = text; else delete e.n;
+    cleanup(db.activeId, key, d);
+    save();
+  });
+
+  $('fillBtn').onclick = function () {
+    var id = db.activeId, key = mk(view.y, view.m), targets = [];
+    for (var d = 1; d <= dim(view.y, view.m); d++) {
+      if (isPast(view.y, view.m, d) && !effective(id, view.y, view.m, d).s) targets.push(d);
+    }
+    if (!targets.length) { toast('No unmarked days up to today.'); return; }
+    if (!confirm('Mark ' + targets.length + ' unmarked day(s) as Present for ' + active().name + '?')) return;
+    targets.forEach(function (d) { ensure(id, key, d).s = 'P'; });
+    save(); refresh(); toast(targets.length + ' days marked present.');
+  };
+
+  function go(delta) {
+    view.m += delta;
+    if (view.m < 0) { view.m = 11; view.y--; }
+    if (view.m > 11) { view.m = 0; view.y++; }
+    refresh();
+  }
+  $('prev').onclick = function () { go(-1); };
+  $('next').onclick = function () { go(1); };
+  $('todayBtn').onclick = function () { view.y = today.y; view.m = today.m; refresh(); };
+
+  /* ---------- team + history interactions ---------- */
+  $('teamTable').addEventListener('click', function (ev) {
+    var b = ev.target.closest('[data-open]'); if (!b) return;
+    db.activeId = b.closest('tr').dataset.id; save();
+    tab = 'month'; refresh();
+  });
+  function openFromHistory(tr) {
+    if (!tr || !tr.dataset.y) return;
+    view.y = +tr.dataset.y; view.m = +tr.dataset.m; tab = 'month'; refresh();
+  }
+  $('histRows').addEventListener('click', function (e) { openFromHistory(e.target.closest('tr')); });
+  $('histRows').addEventListener('keydown', function (e) { if (e.key === 'Enter') openFromHistory(e.target.closest('tr')); });
+
+  $('tabMonth').onclick = function () { tab = 'month'; refresh(); };
+  $('tabTeam').onclick = function () { tab = 'team'; refresh(); };
+  $('tabHistory').onclick = function () { tab = 'history'; refresh(); };
+
+  $('empSel').onchange = function () { db.activeId = this.value; save(); refresh(); };
+
+  /* ---------- employee management ---------- */
+  var empDlg = $('empDlg');
+  function renderEmpList() {
+    $('empList').innerHTML = db.employees.map(function (e) {
+      return '<div class="erow" data-id="' + esc(e.id) + '">' +
+        '<input class="en" type="text" value="' + esc(e.name) + '" maxlength="60" aria-label="Employee name">' +
+        '<input class="ec" type="text" value="' + esc(e.code || '') + '" maxlength="20" placeholder="Emp ID" aria-label="Employee ID">' +
+        '<button type="button" class="btn danger del">Delete</button></div>';
+    }).join('');
+  }
+  function openEmpDlg() { renderEmpList(); $('newName').value = ''; $('newCode').value = ''; empDlg.showModal(); $('newName').focus(); }
+  $('manageBtn').onclick = openEmpDlg;
+  $('emptyAdd').onclick = openEmpDlg;
+  $('closeEmp').onclick = function () { empDlg.close(); };
+  empDlg.addEventListener('close', refresh);
+
+  function addEmployee() {
+    var name = $('newName').value.trim();
+    if (!name) { toast('Enter a name first.'); $('newName').focus(); return; }
+    var emp = { id: uid(), name: name, code: $('newCode').value.trim() };
+    db.employees.push(emp);
+    if (!db.activeId) db.activeId = emp.id;
+    save(); renderEmpList(); renderEmpSelect();
+    $('newName').value = ''; $('newCode').value = ''; $('newName').focus();
+  }
+  $('addEmp').onclick = addEmployee;
+  $('newName').addEventListener('keydown', function (e) { if (e.key === 'Enter') addEmployee(); });
+  $('newCode').addEventListener('keydown', function (e) { if (e.key === 'Enter') addEmployee(); });
+
+  $('empList').addEventListener('change', function (ev) {
+    var row = ev.target.closest('.erow'); if (!row) return;
+    var emp = empById(row.dataset.id); if (!emp) return;
+    if (ev.target.classList.contains('en')) {
+      var v = ev.target.value.trim();
+      if (!v) { ev.target.value = emp.name; toast('Name cannot be empty.'); return; }
+      emp.name = v;
+    } else if (ev.target.classList.contains('ec')) {
+      emp.code = ev.target.value.trim();
+    }
+    save(); renderEmpSelect();
+  });
+  $('empList').addEventListener('click', function (ev) {
+    var btn = ev.target.closest('.del'); if (!btn) return;
+    var id = btn.closest('.erow').dataset.id, emp = empById(id);
+    if (!confirm('Delete ' + emp.name + ' and all their attendance? This cannot be undone.')) return;
+    db.employees = db.employees.filter(function (e) { return e.id !== id; });
+    delete db.records[id];
+    if (db.activeId === id) db.activeId = db.employees.length ? db.employees[0].id : null;
+    save(); renderEmpList(); renderEmpSelect();
+  });
+
+  /* ---------- settings ---------- */
+  var dlg = $('settingsDlg');
+  $('settingsBtn').onclick = function () {
+    $('daysBox').innerHTML = DAYS.map(function (n, i) {
+      return '<label><input type="checkbox" value="' + i + '"' + (db.settings.weekOff.indexOf(i) !== -1 ? ' checked' : '') + '><span>' + n + '</span></label>';
+    }).join('');
+    dlg.showModal();
+  };
+  $('cancelSettings').onclick = function () { dlg.close(); };
+  $('saveSettings').onclick = function () {
+    db.settings.weekOff = Array.prototype.map.call($('daysBox').querySelectorAll('input:checked'), function (i) { return +i.value; });
+    save(); dlg.close(); refresh();
+  };
+
+  /* ---------- export / import ---------- */
+  $('exportBtn').onclick = function () {
+    var blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'attendance-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  };
+  $('importBtn').onclick = function () { $('importFile').click(); };
+
+  function mergeRecords(id, src) {
+    var r = db.records[id] || (db.records[id] = {});
+    Object.keys(src || {}).forEach(function (mkey) {
+      var mo = r[mkey] || (r[mkey] = {});
+      Object.keys(src[mkey]).forEach(function (d) { mo[d] = src[mkey][d]; });
+    });
+  }
+  function findMatch(ie) {
+    var name = String(ie.name || '').toLowerCase(), code = String(ie.code || '').toLowerCase();
+    for (var i = 0; i < db.employees.length; i++) {
+      var e = db.employees[i];
+      if ((code && e.code && e.code.toLowerCase() === code) || e.name.toLowerCase() === name) return e;
+    }
+    return null;
+  }
+  function mergeImport(data) {
+    if (Array.isArray(data.employees)) {
+      data.employees.forEach(function (ie) {
+        if (!ie || !ie.name) return;
+        var m = findMatch(ie), id;
+        if (m) { id = m.id; if (!m.code && ie.code) m.code = ie.code; }
+        else { id = uid(); db.employees.push({ id: id, name: String(ie.name), code: ie.code ? String(ie.code) : '' }); }
+        mergeRecords(id, (data.records || {})[ie.id]);
+      });
+    } else {
+      // backup from the earlier single-person version
+      if (!active()) {
+        var nid = uid(); db.employees.push({ id: nid, name: 'Me', code: '' }); db.activeId = nid;
+      }
+      mergeRecords(db.activeId, data.records);
+    }
+    if (!active() && db.employees.length) db.activeId = db.employees[0].id;
+  }
+  $('importFile').onchange = function (ev) {
+    var f = ev.target.files[0]; if (!f) return;
+    var r = new FileReader();
+    r.onload = function () {
+      try {
+        var data = JSON.parse(r.result);
+        if (!data || typeof data.records !== 'object') throw new Error('bad file');
+        if (!confirm('Merge this backup into your current data? Employees are matched by name or ID, and days in the backup overwrite matching days here.')) return;
+        mergeImport(data); save(); refresh(); toast('Backup merged.');
+      } catch (e) { toast('That file is not a valid backup.'); }
+    };
+    r.readAsText(f); ev.target.value = '';
+  };
+
+  /* ---------- theme ---------- */
+  function applyTheme(t) { if (t) document.documentElement.setAttribute('data-theme', t); else document.documentElement.removeAttribute('data-theme'); }
+  try { applyTheme(localStorage.getItem(THEME_KEY)); } catch (e) {}
+  $('themeBtn').onclick = function () {
+    var cur = document.documentElement.getAttribute('data-theme');
+    var isDark = cur ? cur === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var next = isDark ? 'light' : 'dark';
+    applyTheme(next);
+    try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+  };
+
+  /* ---------- init ---------- */
+  load();
+  refresh();
+})();
+</script>
+</body>
+</html>
